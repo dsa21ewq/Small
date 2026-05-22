@@ -1,0 +1,2 @@
+# Small
+this is an small agent-inspired tool aiming to helps developer better wrap up their project ,in the hope that user can successfully establish a local environment for running the project without any knowledge
