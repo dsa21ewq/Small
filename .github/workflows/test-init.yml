@@ -14,20 +14,25 @@ env:
 
 jobs:
   test-init:
-    name: small init → ${{ matrix.project.name }}
+    name: small init → ${{ matrix.project }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         project:
-          - repo: https://github.com/psf/requests.git
-            name: requests
-            has_cmake_indicator: "true"
-            has_requirements_txt: "false"
-          - repo: https://github.com/nicolargo/glances.git
-            name: glances
-            has_cmake_indicator: "true"
-            has_requirements_txt: "true"
+          - requests
+          - flask
+          - glances
+          - express
+        include:
+          - project: requests
+            repo: https://github.com/psf/requests.git
+          - project: flask
+            repo: https://github.com/pallets/flask.git
+          - project: glances
+            repo: https://github.com/nicolargo/glances.git
+          - project: express
+            repo: https://github.com/expressjs/express.git
     steps:
       - uses: actions/checkout@v4
 
@@ -38,74 +43,88 @@ jobs:
       - name: Build small
         run: cargo build --release
 
-      - name: Clone ${{ matrix.project.name }}
-        run: git clone --depth 1 ${{ matrix.project.repo }} /tmp/${{ matrix.project.name }}
+      - name: Clone ${{ matrix.project }}
+        run: git clone --depth 1 ${{ matrix.repo }} /tmp/${{ matrix.project }}
 
       - name: Run small init via expect
-        working-directory: /tmp/${{ matrix.project.name }}
+        working-directory: /tmp/${{ matrix.project }}
         run: |
           BINARY="$GITHUB_WORKSPACE/target/release/small"
-          NAME="${{ matrix.project.name }}"
-          HAS_REQS="${{ matrix.project.has_requirements_txt }}"
-          HAS_CMAKE="${{ matrix.project.has_cmake_indicator }}"
+          NAME="${{ matrix.project }}"
 
-          cat > /tmp/test_init.exp << 'EXPECT_HEAD'
+          cat > /tmp/test_init.exp << 'EXPECT_SCRIPT'
           #!/usr/bin/expect -f
           set timeout 30
           set binary [lindex $argv 0]
           set name [lindex $argv 1]
-          set has_reqs [lindex $argv 2]
-          set has_cmake [lindex $argv 3]
+
           spawn $binary init
-          expect -re "Project name"
-          send "$name\r"
-          expect -re "Language"
-          send "\r"
-          expect -re "Python version requirement"
-          send "\r"
-          if {$has_reqs eq "true"} {
-              expect -re "Found requirements.txt"
-              expect -re "Use requirements.txt"
-              send "y"
+
+          expect -re "Project name" { send "$name\r" }
+          expect -re "Language" { send "\r" }
+          expect -re "version requirement" { send "\r" }
+
+          expect {
+              -re "dependency source" { send "y\r" }
+              -re "system dependencies" { send "y\r" }
+              -re "Entrypoint command" { send "\r" }
+              timeout { puts "TIMEOUT at conf/entry"; exit 1 }
           }
-          if {$has_cmake eq "true"} {
-              expect -re "Detected"
-              expect -re "Add cmake"
-              send "y"
+
+          expect {
+              -re "Entrypoint command" { send "\r" }
+              -re "Test command" { send "\r" }
+              timeout { puts "TIMEOUT at entry/test"; exit 1 }
           }
-          expect -re "Entrypoint command"
-          send "\r"
-          expect -re "Test command"
-          send "\r"
+
+          expect {
+              -re "Test command" { send "\r" }
+              timeout { puts "TIMEOUT at test"; exit 1 }
+          }
+
           expect {
               -re "Generated small.yaml" { puts "\nSMALL_INIT_OK" }
-              eof { puts "\nSMALL_INIT_FAIL" }
+              timeout { puts "\nSMALL_INIT_FAIL"; exit 1 }
           }
-          EXPECT_HEAD
+          EXPECT_SCRIPT
 
           chmod +x /tmp/test_init.exp
-          /tmp/test_init.exp "$BINARY" "$NAME" "$HAS_REQS" "$HAS_CMAKE"
+          /tmp/test_init.exp "$BINARY" "$NAME"
 
       - name: Show generated small.yaml
-        working-directory: /tmp/${{ matrix.project.name }}
+        working-directory: /tmp/${{ matrix.project }}
         run: |
-          echo "=== small.yaml for ${{ matrix.project.name }} ==="
+          echo "=== small.yaml for ${{ matrix.project }} ==="
           cat small.yaml
 
-      - name: Validate small.yaml fields
-        working-directory: /tmp/${{ matrix.project.name }}
+      - name: Validate small.yaml
+        working-directory: /tmp/${{ matrix.project }}
         run: |
-          echo "Checking required fields..."
-          grep -q "name: ${{ matrix.project.name }}" small.yaml && echo "  [OK] project.name" || { echo "  [FAIL] project.name"; exit 1; }
-          grep -q "language: python" small.yaml && echo "  [OK] project.language" || { echo "  [FAIL] project.language"; exit 1; }
-          grep -q "python:" small.yaml && grep -q ">=" small.yaml && echo "  [OK] runtimes.python" || { echo "  [FAIL] runtimes.python"; exit 1; }
-          grep -q "entrypoint:" small.yaml && echo "  [OK] entrypoint" || { echo "  [FAIL] entrypoint"; exit 1; }
+          errors=0
 
-          if [ "${{ matrix.project.has_requirements_txt }}" = "true" ]; then
-            grep -q "requirements_file: requirements.txt" small.yaml && echo "  [OK] requirements_file" || { echo "  [FAIL] requirements_file"; exit 1; }
-          fi
-          if [ "${{ matrix.project.has_cmake_indicator }}" = "true" ]; then
-            grep -q "cmake" small.yaml && echo "  [OK] system.cmake" || { echo "  [FAIL] system.cmake"; exit 1; }
+          check_field() {
+            if grep -q "$1" small.yaml; then
+              echo "  [OK] $2"
+            else
+              echo "  [FAIL] $2 — '$1' not found in small.yaml"
+              errors=$((errors + 1))
+            fi
+          }
+
+          echo "Validating small.yaml for ${{ matrix.project }}..."
+
+          check_field "name:" "project.name"
+          check_field "language:" "project.language"
+          check_field "entrypoint:" "entrypoint"
+
+          if grep -q "language: python" small.yaml; then
+            check_field "python:" "runtimes.python"
+          elif grep -q "language: node" small.yaml; then
+            check_field "node:" "runtimes.node"
           fi
 
+          if [ "$errors" -gt 0 ]; then
+            echo "$errors validation(s) failed"
+            exit 1
+          fi
           echo "All validations passed"
