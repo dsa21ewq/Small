@@ -1,10 +1,12 @@
+use std::io::IsTerminal;
+
 use crate::display;
 use crate::plan;
 use crate::runtime;
 use crate::syspkg;
 use crate::yaml;
 
-pub fn run() -> anyhow::Result<()> {
+pub fn run(skip_confirm: bool) -> anyhow::Result<()> {
     display::step("Parsing small.yaml...");
     let config = yaml::parse("small.yaml")?;
     display::success("Parsed small.yaml");
@@ -69,7 +71,9 @@ pub fn run() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    if !confirm_install(&plan)? {
+    if skip_confirm || !std::io::stdin().is_terminal() {
+        display::info("Skipping confirmation (non-interactive mode)");
+    } else if !confirm_install(&plan)? {
         display::info("Install cancelled.");
         return Ok(());
     }

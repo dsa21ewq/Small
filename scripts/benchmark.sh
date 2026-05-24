@@ -27,7 +27,7 @@ run_one() {
 
   if [[ ! -f "$dir/small.yaml" ]]; then
     skip "no small.yaml"
-    ((SKIP++))
+    SKIP=$((SKIP + 1))
     return
   fi
 
@@ -38,7 +38,7 @@ run_one() {
     :
   else
     fail "install failed — tail: $(tail -3 /tmp/small-benchmark-install.log 2>/dev/null | tr '\n' ' ')"
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
     return
   fi
 
@@ -48,7 +48,7 @@ run_one() {
       :
     else
       fail "test failed — tail: $(tail -3 /tmp/small-benchmark-test.log 2>/dev/null | tr '\n' ' ')"
-      ((FAIL++))
+      FAIL=$((FAIL + 1))
       return
     fi
   fi
@@ -57,7 +57,7 @@ run_one() {
   $SMALL_BIN clean </dev/null >/dev/null 2>&1 || true
 
   pass
-  ((PASS++))
+  PASS=$((PASS + 1))
 }
 
 main() {

@@ -8,4 +8,5 @@ pub mod plan;
 pub mod run;
 pub mod runtime;
 pub mod syspkg;
+pub mod test;
 pub mod yaml;

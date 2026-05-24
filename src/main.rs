@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use small::{check, clean, init, install, run};
+use small::{check, clean, init, install, run, test};
 
 #[derive(Parser)]
 #[command(name = "small")]
@@ -14,13 +14,19 @@ enum Commands {
     /// Scan project files + interactive prompts → generate small.yaml
     Init,
     /// One-shot install: detect → download runtimes → install deps → test
-    Install,
+    Install {
+        /// Skip confirmation prompt (for CI/automation)
+        #[arg(short = 'y', long = "yes")]
+        yes: bool,
+    },
     /// Dry-run check — report what would be installed
     Check,
     /// Remove .small_venv / node_modules (preserves runtime cache)
     Clean,
     /// Launch the project via entrypoint
     Run,
+    /// Run the test command from small.yaml
+    Test,
     /// Print version
     Version,
 }
@@ -30,10 +36,11 @@ fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Init => init::run()?,
-        Commands::Install => install::run()?,
+        Commands::Install { yes } => install::run(yes)?,
         Commands::Check => check::run()?,
         Commands::Clean => clean::run()?,
         Commands::Run => run::run()?,
+        Commands::Test => test::run()?,
         Commands::Version => println!("small {}", env!("CARGO_PKG_VERSION")),
     }
 
