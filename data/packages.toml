@@ -1,0 +1,10 @@
+[cmake]
+brew = "cmake"
+apt = "cmake"
+
+[pkg-config]
+brew = "pkg-config"
+apt = "pkg-config"
+
+[python3-dev]
+apt = "python3-dev"

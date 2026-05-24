@@ -67,15 +67,15 @@ pub struct NodeCheck {
 }
 
 pub fn detect_os() -> OsInfo {
-    let os = match std::env::consts::OS {
-        "macos" => "macos",
-        "linux" => "linux",
-        _ => "linux",
+    let os = if cfg!(target_os = "macos") {
+        "macos"
+    } else {
+        "linux"
     };
-    let arch = match std::env::consts::ARCH {
-        "aarch64" => "arm64",
-        "x86_64" => "x64",
-        _ => "x64",
+    let arch = if cfg!(target_arch = "aarch64") {
+        "arm64"
+    } else {
+        "x64"
     };
     OsInfo {
         os: os.to_string(),
