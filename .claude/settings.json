@@ -1,0 +1,63 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo *)",
+      "Bash(rustc *)",
+      "Bash(rustup *)",
+      "Bash(git:*)",
+      "Bash(curl *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(ls *)",
+      "Bash(mkdir *)",
+      "Bash(rm *)",
+      "Bash(chmod *)",
+      "Bash(brew *)",
+      "Bash(apt-get *)",
+      "Bash(npx *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(file *)",
+      "Bash(which *)",
+      "Bash(uname *)",
+      "Bash(echo *)",
+      "Bash(pwd *)",
+      "Bash(xcode-select *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.command' | grep -qE '(git commit|git merge|git rebase)' && cd /Users/oscar/Desktop/Small && echo '=== cargo fmt ===' && cargo fmt --check 2>&1 && echo '=== cargo clippy ===' && cargo clippy --all-targets -- -D warnings 2>&1; true"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath' | { read -r f; if echo \"$f\" | grep -q '\\.rs$'; then cd /Users/oscar/Desktop/Small && cargo check 2>&1 | head -50; fi } 2>/dev/null || true"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath' | { read -r f; if echo \"$f\" | grep -q '\\.rs$'; then cd /Users/oscar/Desktop/Small && cargo check 2>&1 | head -50; fi } 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

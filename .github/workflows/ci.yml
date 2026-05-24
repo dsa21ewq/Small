@@ -1,0 +1,144 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # --- Lint & Format (single OS, fast feedback) ---
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+  # --- Build & Test Matrix ---
+  test:
+    name: Test (${{ matrix.os }})
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Test
+        run: cargo test --release
+
+  # --- Release Build (tag push only) ---
+  release:
+    name: Release (${{ matrix.target }})
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: small-linux-x64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: small-macos-arm64
+          - os: macos-13
+            target: x86_64-apple-darwin
+            artifact: small-macos-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release
+        run: |
+          cargo build --release --target ${{ matrix.target }}
+          cp target/${{ matrix.target }}/release/small ${{ matrix.artifact }}
+
+      - name: Strip binary
+        run: strip ${{ matrix.artifact }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  # --- GitHub Release ---
+  github-release:
+    name: Create GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: small-*
+          merge-multiple: true
+
+      - name: Generate install script
+        run: |
+          cat > install.sh << 'SCRIPT'
+          #!/bin/bash
+          set -e
+          OS=$(uname -s)
+          ARCH=$(uname -m)
+          case "$OS-$ARCH" in
+            Darwin-arm64)  BINARY="small-macos-arm64" ;;
+            Darwin-x86_64) BINARY="small-macos-x64" ;;
+            Linux-x86_64)  BINARY="small-linux-x64" ;;
+            *) echo "Unsupported: $OS-$ARCH. Use WSL2 on Windows."; exit 1 ;;
+          esac
+          TAG="${1:-latest}"
+          if [ "$TAG" = "latest" ]; then
+            URL="https://github.com/${GITHUB_REPOSITORY:-dsa21ewq/small}/releases/latest/download/$BINARY"
+          else
+            URL="https://github.com/${GITHUB_REPOSITORY:-dsa21ewq/small}/releases/download/$TAG/$BINARY"
+          fi
+          echo "Downloading small from $URL..."
+          curl -fsSL "$URL" -o /usr/local/bin/small
+          chmod +x /usr/local/bin/small
+          echo "Done! Run 'small version' to verify."
+          SCRIPT
+          chmod +x install.sh
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            small-*
+            install.sh
+          generate_release_notes: true
