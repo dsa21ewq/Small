@@ -5,8 +5,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/init.rs'
-      - 'src/yaml.rs'
+      - 'src/**'
+      - 'data/**'
       - '.github/workflows/test-init.yml'
 
 env:
