@@ -1,0 +1,111 @@
+name: Test small init
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/init.rs'
+      - 'src/yaml.rs'
+      - '.github/workflows/test-init.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-init:
+    name: small init → ${{ matrix.project.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - repo: https://github.com/psf/requests.git
+            name: requests
+            has_cmake_indicator: "true"
+            has_requirements_txt: "false"
+          - repo: https://github.com/nicolargo/glances.git
+            name: glances
+            has_cmake_indicator: "true"
+            has_requirements_txt: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build small
+        run: cargo build --release
+
+      - name: Clone ${{ matrix.project.name }}
+        run: git clone --depth 1 ${{ matrix.project.repo }} /tmp/${{ matrix.project.name }}
+
+      - name: Run small init via expect
+        working-directory: /tmp/${{ matrix.project.name }}
+        run: |
+          BINARY="$GITHUB_WORKSPACE/target/release/small"
+          NAME="${{ matrix.project.name }}"
+          HAS_REQS="${{ matrix.project.has_requirements_txt }}"
+          HAS_CMAKE="${{ matrix.project.has_cmake_indicator }}"
+
+          cat > /tmp/test_init.exp << 'EXPECT_HEAD'
+          #!/usr/bin/expect -f
+          set timeout 30
+          set binary [lindex $argv 0]
+          set name [lindex $argv 1]
+          set has_reqs [lindex $argv 2]
+          set has_cmake [lindex $argv 3]
+          spawn $binary init
+          expect -re "Project name"
+          send "$name\r"
+          expect -re "Language"
+          send "\r"
+          expect -re "Python version requirement"
+          send "\r"
+          if {$has_reqs eq "true"} {
+              expect -re "Found requirements.txt"
+              expect -re "Use requirements.txt"
+              send "y"
+          }
+          if {$has_cmake eq "true"} {
+              expect -re "Detected"
+              expect -re "Add cmake"
+              send "y"
+          }
+          expect -re "Entrypoint command"
+          send "\r"
+          expect -re "Test command"
+          send "\r"
+          expect {
+              -re "Generated small.yaml" { puts "\nSMALL_INIT_OK" }
+              eof { puts "\nSMALL_INIT_FAIL" }
+          }
+          EXPECT_HEAD
+
+          chmod +x /tmp/test_init.exp
+          /tmp/test_init.exp "$BINARY" "$NAME" "$HAS_REQS" "$HAS_CMAKE"
+
+      - name: Show generated small.yaml
+        working-directory: /tmp/${{ matrix.project.name }}
+        run: |
+          echo "=== small.yaml for ${{ matrix.project.name }} ==="
+          cat small.yaml
+
+      - name: Validate small.yaml fields
+        working-directory: /tmp/${{ matrix.project.name }}
+        run: |
+          echo "Checking required fields..."
+          grep -q "name: ${{ matrix.project.name }}" small.yaml && echo "  [OK] project.name" || { echo "  [FAIL] project.name"; exit 1; }
+          grep -q "language: python" small.yaml && echo "  [OK] project.language" || { echo "  [FAIL] project.language"; exit 1; }
+          grep -q "python:" small.yaml && grep -q ">=" small.yaml && echo "  [OK] runtimes.python" || { echo "  [FAIL] runtimes.python"; exit 1; }
+          grep -q "entrypoint:" small.yaml && echo "  [OK] entrypoint" || { echo "  [FAIL] entrypoint"; exit 1; }
+
+          if [ "${{ matrix.project.has_requirements_txt }}" = "true" ]; then
+            grep -q "requirements_file: requirements.txt" small.yaml && echo "  [OK] requirements_file" || { echo "  [FAIL] requirements_file"; exit 1; }
+          fi
+          if [ "${{ matrix.project.has_cmake_indicator }}" = "true" ]; then
+            grep -q "cmake" small.yaml && echo "  [OK] system.cmake" || { echo "  [FAIL] system.cmake"; exit 1; }
+          fi
+
+          echo "All validations passed"
