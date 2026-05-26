@@ -3,6 +3,7 @@ project:
   language: python
 runtimes:
   python: ">=3.10,<3.13"
-post_install:
-  - "pip install ."
-entrypoint: "python -m pip show aiohttp"
+dependencies:
+  python:
+    - "aiohttp>=3.9"
+entrypoint: "python --version"
