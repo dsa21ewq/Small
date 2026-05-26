@@ -316,7 +316,16 @@ pub fn download_and_extract(
         let decoder = flate2::read::GzDecoder::new(file);
         let mut archive = tar::Archive::new(decoder);
         std::fs::create_dir_all(dest)?;
-        archive.unpack(dest)?;
+        for entry in archive.entries()? {
+            let mut entry = entry?;
+            let path = entry.path()?.to_path_buf();
+            let components: Vec<_> = path.components().collect();
+            if components.len() <= 1 {
+                continue;
+            }
+            let stripped: std::path::PathBuf = components[1..].iter().collect();
+            entry.unpack(dest.join(&stripped))?;
+        }
         std::fs::remove_file(&tmp)?;
 
         Ok::<_, anyhow::Error>(())

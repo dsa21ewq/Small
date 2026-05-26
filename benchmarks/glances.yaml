@@ -1,0 +1,10 @@
+project:
+  name: glances
+  language: python
+runtimes:
+  python: ">=3.9,<3.13"
+requirements_file: "requirements.txt"
+system:
+  - python3-dev
+entrypoint: "python -c \"import glances; print('ok')\""
+test: "python -m pytest tests/ -x -q"

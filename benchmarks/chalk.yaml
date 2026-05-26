@@ -1,0 +1,7 @@
+project:
+  name: chalk
+  language: node
+runtimes:
+  node: ">=18"
+entrypoint: "node -e \"console.log('ok')\""
+test: "npm test"

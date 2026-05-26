@@ -1,0 +1,7 @@
+project:
+  name: itsdangerous
+  language: python
+runtimes:
+  python: ">=3.9,<3.13"
+entrypoint: "python -c \"import itsdangerous; print('ok')\""
+test: "python -m pytest tests/ -x -q"

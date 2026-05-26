@@ -1,0 +1,8 @@
+project:
+  name: werkzeug
+  language: python
+runtimes:
+  python: ">=3.9,<3.13"
+requirements_file: "requirements/dev.txt"
+entrypoint: "python -c \"import werkzeug; print('ok')\""
+test: "python -m pytest tests/ -x -q"

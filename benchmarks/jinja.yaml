@@ -1,0 +1,10 @@
+project:
+  name: jinja
+  language: python
+runtimes:
+  python: ">=3.9,<3.13"
+dependencies:
+  python:
+    - "markupsafe>=2.0"
+entrypoint: "python -c \"import jinja2; print(jinja2.__version__)\""
+test: "python -m pytest tests/ -x -q"

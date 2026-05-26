@@ -1,0 +1,8 @@
+project:
+  name: flask
+  language: python
+runtimes:
+  python: ">=3.9,<3.13"
+requirements_file: "requirements/dev.txt"
+entrypoint: "python -c \"import flask; print(flask.__version__)\""
+test: "python -m pytest tests/ -x -q"

@@ -36,7 +36,9 @@ pub enum StepKind {
         packages: Vec<String>,
         requirements_file: Option<String>,
     },
-    NpmInstall,
+    NpmInstall {
+        env_paths: Vec<PathBuf>,
+    },
     RunCommand {
         command: String,
         env_paths: Vec<PathBuf>,
@@ -153,7 +155,9 @@ pub fn build(
     } else if config.project.language == "node" {
         steps.push(Step {
             label: "npm install".to_string(),
-            kind: StepKind::NpmInstall,
+            kind: StepKind::NpmInstall {
+                env_paths: env_paths.clone(),
+            },
         });
     }
 

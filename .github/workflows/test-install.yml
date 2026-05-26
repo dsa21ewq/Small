@@ -1,0 +1,109 @@
+name: Test small install
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'data/**'
+      - 'benchmarks/**'
+      - '.github/workflows/test-install.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-install:
+    name: ${{ matrix.project }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── Python with requirements.txt ──
+          - project: glances
+            repo: https://github.com/nicolargo/glances.git
+          - project: cookiecutter
+            repo: https://github.com/cookiecutter/cookiecutter.git
+          - project: python-dotenv
+            repo: https://github.com/theskumar/python-dotenv.git
+          - project: httpie
+            repo: https://github.com/httpie/cli.git
+
+          # ── Python pallets ecosystem (requirements/dev.txt) ──
+          - project: flask
+            repo: https://github.com/pallets/flask.git
+          - project: werkzeug
+            repo: https://github.com/pallets/werkzeug.git
+          - project: click
+            repo: https://github.com/pallets/click.git
+          - project: jinja
+            repo: https://github.com/pallets/jinja.git
+          - project: itsdangerous
+            repo: https://github.com/pallets/itsdangerous.git
+          - project: markupsafe
+            repo: https://github.com/pallets/markupsafe.git
+
+          # ── Python libraries (inline deps) ──
+          - project: aiohttp
+            repo: https://github.com/aio-libs/aiohttp.git
+          - project: requests
+            repo: https://github.com/psf/requests.git
+          - project: rich
+            repo: https://github.com/Textualize/rich.git
+          - project: pytest
+            repo: https://github.com/pytest-dev/pytest.git
+
+          # ── Node.js ──
+          - project: express
+            repo: https://github.com/expressjs/express.git
+          - project: axios
+            repo: https://github.com/axios/axios.git
+          - project: commander
+            repo: https://github.com/tj/commander.js.git
+          - project: debug
+            repo: https://github.com/debug-js/debug.git
+          - project: morgan
+            repo: https://github.com/expressjs/morgan.git
+          - project: cors
+            repo: https://github.com/expressjs/cors.git
+          - project: body-parser
+            repo: https://github.com/expressjs/body-parser.git
+          - project: chalk
+            repo: https://github.com/chalk/chalk.git
+          - project: lodash
+            repo: https://github.com/lodash/lodash.git
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build small
+        run: cargo build --release
+
+      - name: Clone ${{ matrix.project }}
+        run: git clone --depth 1 ${{ matrix.repo }} /tmp/${{ matrix.project }}
+
+      - name: Copy benchmark small.yaml
+        run: cp benchmarks/${{ matrix.project }}.yaml /tmp/${{ matrix.project }}/small.yaml
+
+      - name: small install -y
+        working-directory: /tmp/${{ matrix.project }}
+        run: $GITHUB_WORKSPACE/target/release/small install -y
+
+      - name: small run
+        working-directory: /tmp/${{ matrix.project }}
+        run: $GITHUB_WORKSPACE/target/release/small run
+
+      - name: small test
+        working-directory: /tmp/${{ matrix.project }}
+        run: $GITHUB_WORKSPACE/target/release/small test
+        continue-on-error: true
+
+      - name: small clean
+        working-directory: /tmp/${{ matrix.project }}
+        run: $GITHUB_WORKSPACE/target/release/small clean

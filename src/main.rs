@@ -12,7 +12,11 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Scan project files + interactive prompts → generate small.yaml
-    Init,
+    Init {
+        /// Accept all defaults (for CI/automation)
+        #[arg(short = 'y', long = "yes")]
+        yes: bool,
+    },
     /// One-shot install: detect → download runtimes → install deps → test
     Install {
         /// Skip confirmation prompt (for CI/automation)
@@ -35,7 +39,7 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Init => init::run()?,
+        Commands::Init { yes } => init::run(yes)?,
         Commands::Install { yes } => install::run(yes)?,
         Commands::Check => check::run()?,
         Commands::Clean => clean::run()?,

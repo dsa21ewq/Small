@@ -68,8 +68,18 @@ fn execute_step(kind: &StepKind, project_dir: &Path) -> anyhow::Result<()> {
             }
             Ok(())
         }
-        StepKind::NpmInstall => {
-            duct::cmd("npm", ["install"]).dir(project_dir).run()?;
+        StepKind::NpmInstall { env_paths } => {
+            let mut cmd = duct::cmd("npm", ["install"]);
+            cmd = cmd.dir(project_dir);
+            if !env_paths.is_empty() {
+                let current_path = std::env::var("PATH").unwrap_or_default();
+                let extra: Vec<String> = env_paths
+                    .iter()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .collect();
+                cmd = cmd.env("PATH", extra.join(":") + ":" + &current_path);
+            }
+            cmd.run()?;
             Ok(())
         }
         StepKind::RunCommand { command, env_paths } => {

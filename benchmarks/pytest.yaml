@@ -1,0 +1,10 @@
+project:
+  name: pytest
+  language: python
+runtimes:
+  python: ">=3.9,<3.13"
+dependencies:
+  python:
+    - "pytest>=7.0"
+entrypoint: "pytest --version"
+test: "python -m pytest testing/ -x -q"

@@ -19,5 +19,5 @@ url = "https://nodejs.org/dist/v20.12.0/node-v20.12.0-darwin-x64.tar.gz"
 sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
 
 [node."20.12.0".linux_x64]
-url = "https://nodejs.org/dist/v20.12.0/node-v20.12.0-linux-x64.tar.xz"
+url = "https://nodejs.org/dist/v20.12.0/node-v20.12.0-linux-x64.tar.gz"
 sha256 = "0000000000000000000000000000000000000000000000000000000000000000"

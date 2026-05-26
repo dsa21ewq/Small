@@ -14,7 +14,7 @@ struct ScanResult {
     test_cmd: String,
 }
 
-pub fn run() -> anyhow::Result<()> {
+pub fn run(skip_confirm: bool) -> anyhow::Result<()> {
     let cwd = std::env::current_dir()?;
     let dir_name = cwd
         .file_name()
@@ -22,6 +22,60 @@ pub fn run() -> anyhow::Result<()> {
         .unwrap_or_else(|| "my-project".to_string());
 
     let scan = scan_dir(&cwd);
+
+    if skip_confirm {
+        let language = scan.language.clone();
+        let version = if language == "python" {
+            ">=3.9,<3.13".to_string()
+        } else {
+            ">=18".to_string()
+        };
+        let requirements_file = if scan.has_requirements_txt {
+            Some("requirements.txt".to_string())
+        } else {
+            None
+        };
+        let package_file = if scan.has_package_json && language == "node" {
+            Some("package.json".to_string())
+        } else {
+            None
+        };
+        let config = SmallYaml {
+            project: Project {
+                name: dir_name,
+                language: language.clone(),
+            },
+            runtimes: Runtimes {
+                python: if language == "python" {
+                    Some(version.clone())
+                } else {
+                    None
+                },
+                node: if language == "node" {
+                    Some(version)
+                } else {
+                    None
+                },
+            },
+            system: scan.system_pkgs.clone(),
+            dependencies: Default::default(),
+            requirements_file,
+            package_file,
+            env: Default::default(),
+            pre_install: vec![],
+            post_install: vec![],
+            test: if scan.test_cmd.is_empty() {
+                None
+            } else {
+                Some(scan.test_cmd)
+            },
+            entrypoint: scan.entrypoint,
+        };
+        let yaml_str = serde_yaml::to_string(&config)?;
+        fs::write("small.yaml", yaml_str)?;
+        println!("Generated small.yaml");
+        return Ok(());
+    }
 
     let name: String = Input::new()
         .with_prompt("Project name")

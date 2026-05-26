@@ -28,6 +28,7 @@ pub fn run() -> anyhow::Result<()> {
         } else if let Some(dl) = check.download {
             env_paths.push(dl.dest.join("bin"));
         }
+        env_paths.push(PathBuf::from("node_modules/.bin"));
     }
 
     let current_path = std::env::var("PATH").unwrap_or_default();

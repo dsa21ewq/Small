@@ -1,0 +1,10 @@
+project:
+  name: rich
+  language: python
+runtimes:
+  python: ">=3.9,<3.13"
+dependencies:
+  python:
+    - "rich>=13.0"
+entrypoint: "python -c \"import rich; rich.print('hello from rich')\""
+test: "python -m pytest tests/ -x -q"

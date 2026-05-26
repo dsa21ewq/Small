@@ -1,0 +1,13 @@
+project:
+  name: requests
+  language: python
+runtimes:
+  python: ">=3.9,<3.13"
+dependencies:
+  python:
+    - "certifi"
+    - "charset-normalizer"
+    - "idna"
+    - "urllib3"
+entrypoint: "python -c \"import requests; print(requests.__version__)\""
+test: "python -m pytest tests/ -x -q"
