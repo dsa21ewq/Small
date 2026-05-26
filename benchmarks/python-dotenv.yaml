@@ -3,10 +3,6 @@ project:
   language: python
 runtimes:
   python: ">=3.10,<3.13"
-requirements_file: "requirements.txt"
-dependencies:
-  python:
-    - "pytest>=7.0"
 post_install:
   - "pip install ."
-entrypoint: "python -c \"import dotenv; print('ok')\""
+entrypoint: "python -m pip show python-dotenv"

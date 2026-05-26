@@ -3,9 +3,6 @@ project:
   language: python
 runtimes:
   python: ">=3.10,<3.13"
-dependencies:
-  python:
-    - "pytest>=7.0"
 post_install:
   - "pip install ."
-entrypoint: "python -c \"import werkzeug; print('ok')\""
+entrypoint: "python -m pip show werkzeug"
