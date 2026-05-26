@@ -2,9 +2,11 @@ project:
   name: aiohttp
   language: python
 runtimes:
-  python: ">=3.9,<3.13"
+  python: ">=3.10,<3.13"
 dependencies:
   python:
-    - "aiohttp>=3.9"
+    - "pytest>=7.0"
+post_install:
+  - "pip install ."
 entrypoint: "python -c \"import aiohttp; print(aiohttp.__version__)\""
 test: "python -m pytest tests/ -x -q --no-header"

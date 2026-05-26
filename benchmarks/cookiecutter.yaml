@@ -2,7 +2,12 @@ project:
   name: cookiecutter
   language: python
 runtimes:
-  python: ">=3.9,<3.13"
+  python: ">=3.10,<3.13"
 requirements_file: "requirements.txt"
+dependencies:
+  python:
+    - "pytest>=7.0"
+post_install:
+  - "pip install ."
 entrypoint: "cookiecutter --version"
 test: "python -m pytest tests/ -x -q"

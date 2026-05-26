@@ -11,23 +11,8 @@ on:
       - '.github/workflows/test-bare-metal.yml'
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Build small
-        run: cargo build --release
-      - uses: actions/upload-artifact@v4
-        with:
-          name: small-binary
-          path: target/release/small
-
   bare-test:
-    needs: build
     runs-on: ubuntu-latest
-    container: ubuntu:24.04
     strategy:
       fail-fast: false
       matrix:
@@ -42,36 +27,47 @@ jobs:
             repo: https://github.com/expressjs/express.git
             runtime: node
     steps:
-      - name: Install prerequisites
-        run: |
-          apt-get update -qq && apt-get install -y -qq git ca-certificates
+      - uses: actions/checkout@v4
 
-      - name: Verify no Python
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build small
+        run: cargo build --release
+
+      - name: Hide system runtimes
+        run: |
+          if [ "${{ matrix.runtime }}" = "python" ]; then
+            for p in $(which -a python3 2>/dev/null || true); do
+              echo "Hiding $p"
+              sudo mv "$p" "${p}.small-bak"
+            done
+          fi
+          if [ "${{ matrix.runtime }}" = "node" ]; then
+            for p in $(which -a node 2>/dev/null || true); do
+              echo "Hiding $p"
+              sudo mv "$p" "${p}.small-bak"
+            done
+          fi
+
+      - name: Verify runtime hidden
         if: matrix.runtime == 'python'
         run: |
           if command -v python3; then
-            echo "FAIL: python3 found on bare system"
+            echo "FAIL: python3 still found"
             exit 1
           fi
-          echo "OK: no python3 on bare system"
+          echo "OK: no python3 on PATH"
 
-      - name: Verify no Node
+      - name: Verify runtime hidden
         if: matrix.runtime == 'node'
         run: |
           if command -v node; then
-            echo "FAIL: node found on bare system"
+            echo "FAIL: node still found"
             exit 1
           fi
-          echo "OK: no node on bare system"
-
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: small-binary
-
-      - name: Make small executable
-        run: chmod +x small
+          echo "OK: no node on PATH"
 
       - name: Clone ${{ matrix.project }}
         run: git clone --depth 1 ${{ matrix.repo }} /tmp/${{ matrix.project }}
@@ -81,12 +77,21 @@ jobs:
 
       - name: small install -y
         working-directory: /tmp/${{ matrix.project }}
-        run: $GITHUB_WORKSPACE/small install -y
+        run: $GITHUB_WORKSPACE/target/release/small install -y
 
       - name: small run
         working-directory: /tmp/${{ matrix.project }}
-        run: $GITHUB_WORKSPACE/small run
+        run: $GITHUB_WORKSPACE/target/release/small run
 
       - name: small clean
         working-directory: /tmp/${{ matrix.project }}
-        run: $GITHUB_WORKSPACE/small clean
+        run: $GITHUB_WORKSPACE/target/release/small clean
+
+      - name: Restore system runtimes
+        if: always()
+        run: |
+          for p in /usr/bin/python3.small-bak /usr/local/bin/python3.small-bak /usr/bin/node.small-bak /usr/local/bin/node.small-bak; do
+            if [ -f "$p" ]; then
+              sudo mv "$p" "${p%.small-bak}"
+            fi
+          done

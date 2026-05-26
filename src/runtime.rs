@@ -324,7 +324,11 @@ pub fn download_and_extract(
                 continue;
             }
             let stripped: std::path::PathBuf = components[1..].iter().collect();
-            entry.unpack(dest.join(&stripped))?;
+            let target = dest.join(&stripped);
+            if let Some(parent) = target.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            entry.unpack(&target)?;
         }
         std::fs::remove_file(&tmp)?;
 

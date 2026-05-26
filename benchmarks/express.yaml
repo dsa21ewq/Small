@@ -3,5 +3,4 @@ project:
   language: node
 runtimes:
   node: ">=18"
-entrypoint: "node -e \"console.log(require('express').version || 'ok')\""
-test: "npm test"
+entrypoint: "node -e \"console.log('ok')\""

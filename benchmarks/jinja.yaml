@@ -2,9 +2,11 @@ project:
   name: jinja
   language: python
 runtimes:
-  python: ">=3.9,<3.13"
+  python: ">=3.10,<3.13"
 dependencies:
   python:
-    - "markupsafe>=2.0"
+    - "pytest>=7.0"
+post_install:
+  - "pip install ."
 entrypoint: "python -c \"import jinja2; print(jinja2.__version__)\""
 test: "python -m pytest tests/ -x -q"
