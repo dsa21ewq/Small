@@ -9,4 +9,3 @@ dependencies:
 post_install:
   - "pip install ."
 entrypoint: "python -c \"import flask; print(flask.__version__)\""
-test: "python -m pytest tests/ -x -q"

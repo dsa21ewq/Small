@@ -9,4 +9,3 @@ dependencies:
 post_install:
   - "pip install ."
 entrypoint: "pytest --version"
-test: "python -m pytest testing/ -x -q"

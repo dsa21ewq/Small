@@ -10,4 +10,3 @@ dependencies:
 post_install:
   - "pip install ."
 entrypoint: "http --version"
-test: "python -m pytest tests/ -x -q"

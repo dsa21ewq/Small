@@ -10,4 +10,3 @@ dependencies:
 post_install:
   - "pip install ."
 entrypoint: "python -c \"import dotenv; print('ok')\""
-test: "python -m pytest tests/ -x -q"

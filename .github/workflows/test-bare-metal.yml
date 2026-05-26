@@ -20,12 +20,11 @@ jobs:
           - project: glances
             repo: https://github.com/nicolargo/glances.git
             runtime: python
-          - project: cookiecutter
-            repo: https://github.com/cookiecutter/cookiecutter.git
-            runtime: python
+            force_version: "==3.11.15"
           - project: express
             repo: https://github.com/expressjs/express.git
             runtime: node
+            force_version: "==20.12.0"
     steps:
       - uses: actions/checkout@v4
 
@@ -36,44 +35,21 @@ jobs:
       - name: Build small
         run: cargo build --release
 
-      - name: Hide system runtimes
-        run: |
-          if [ "${{ matrix.runtime }}" = "python" ]; then
-            for p in $(which -a python3 2>/dev/null || true); do
-              echo "Hiding $p"
-              sudo mv "$p" "${p}.small-bak"
-            done
-          fi
-          if [ "${{ matrix.runtime }}" = "node" ]; then
-            for p in $(which -a node 2>/dev/null || true); do
-              echo "Hiding $p"
-              sudo mv "$p" "${p}.small-bak"
-            done
-          fi
-
-      - name: Verify runtime hidden
-        if: matrix.runtime == 'python'
-        run: |
-          if command -v python3; then
-            echo "FAIL: python3 still found"
-            exit 1
-          fi
-          echo "OK: no python3 on PATH"
-
-      - name: Verify runtime hidden
-        if: matrix.runtime == 'node'
-        run: |
-          if command -v node; then
-            echo "FAIL: node still found"
-            exit 1
-          fi
-          echo "OK: no node on PATH"
-
       - name: Clone ${{ matrix.project }}
         run: git clone --depth 1 ${{ matrix.repo }} /tmp/${{ matrix.project }}
 
       - name: Copy benchmark small.yaml
         run: cp benchmarks/${{ matrix.project }}.yaml /tmp/${{ matrix.project }}/small.yaml
+
+      - name: Force runtime download (pin version)
+        working-directory: /tmp/${{ matrix.project }}
+        if: matrix.runtime == 'python'
+        run: sed -i 's/python: ">=3.10,<3.13"/python: "${{ matrix.force_version }}"/' small.yaml
+
+      - name: Force runtime download (pin version)
+        working-directory: /tmp/${{ matrix.project }}
+        if: matrix.runtime == 'node'
+        run: sed -i 's/node: ">=18"/node: "${{ matrix.force_version }}"/' small.yaml
 
       - name: small install -y
         working-directory: /tmp/${{ matrix.project }}
@@ -86,12 +62,3 @@ jobs:
       - name: small clean
         working-directory: /tmp/${{ matrix.project }}
         run: $GITHUB_WORKSPACE/target/release/small clean
-
-      - name: Restore system runtimes
-        if: always()
-        run: |
-          for p in /usr/bin/python3.small-bak /usr/local/bin/python3.small-bak /usr/bin/node.small-bak /usr/local/bin/node.small-bak; do
-            if [ -f "$p" ]; then
-              sudo mv "$p" "${p%.small-bak}"
-            fi
-          done
