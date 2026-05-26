@@ -1,4 +1,4 @@
-name: Test bare metal (no Python/pip)
+name: "Test bare metal"
 
 on:
   workflow_dispatch:
@@ -20,36 +20,31 @@ jobs:
           - project: glances
             repo: https://github.com/nicolargo/glances.git
             runtime: python
-            force_version: "==3.11.15"
           - project: express
             repo: https://github.com/expressjs/express.git
             runtime: node
-            force_version: "==20.12.0"
     steps:
       - uses: actions/checkout@v4
-
       - uses: dtolnay/rust-toolchain@stable
-
       - uses: Swatinem/rust-cache@v2
 
       - name: Build small
         run: cargo build --release
 
-      - name: Clone ${{ matrix.project }}
+      - name: Clone project
         run: git clone --depth 1 ${{ matrix.repo }} /tmp/${{ matrix.project }}
 
-      - name: Copy benchmark small.yaml
+      - name: Copy small.yaml
         run: cp benchmarks/${{ matrix.project }}.yaml /tmp/${{ matrix.project }}/small.yaml
 
-      - name: Force runtime download (pin version)
+      - name: Pin version to force runtime download
         working-directory: /tmp/${{ matrix.project }}
-        if: matrix.runtime == 'python'
-        run: sed -i 's/python: ">=3.10,<3.13"/python: "${{ matrix.force_version }}"/' small.yaml
-
-      - name: Force runtime download (pin version)
-        working-directory: /tmp/${{ matrix.project }}
-        if: matrix.runtime == 'node'
-        run: sed -i 's/node: ">=18"/node: "${{ matrix.force_version }}"/' small.yaml
+        run: |
+          if [ "${{ matrix.runtime }}" = "python" ]; then
+            sed -i 's/python:.*/python: "==3.11.15"/' small.yaml
+          else
+            sed -i 's/node:.*/node: "==20.12.0"/' small.yaml
+          fi
 
       - name: small install -y
         working-directory: /tmp/${{ matrix.project }}
